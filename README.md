@@ -1,2 +1,2 @@
-# Systemizor
-To banish Chaos and bathe all in the brilliance of Order.
+# Quantifyzor
+Like abacus but better.
