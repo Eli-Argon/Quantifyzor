@@ -64,7 +64,7 @@ fQuantify(pInputDir, sLetter) {
 
         sPanelName := fGetPanelName(A_LoopFileLongPath)
         If !sPanelName {
-            nSkipped++
+            nSkippedFiles++
             oLogger.add("Skipped" sLetter, "UNKNOWN PANEL", A_LoopFileDir "\", A_LoopFileName)
             continue
         }
