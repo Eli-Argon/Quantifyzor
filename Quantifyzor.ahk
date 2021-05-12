@@ -174,11 +174,13 @@ fTransliterate(str) {
 				 ,"Ы": "Y", "Ь": "waat", "Э": "E", "Ю": "Ju", "Я": "Ja"}
     newStr := "", char := ""
     Loop, parse, str
+    {
         StringUpper, char, A_LoopField
         If RegExMatch(char, "S)[А-Я]")
             newStr .= dRusToEng[char]
         else
             newStr .= char
+    }
     return newStr
 }
 
