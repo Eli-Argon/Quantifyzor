@@ -159,9 +159,8 @@ fGetPanelName(pFile) {
     If ( (sPanel_num2 != "")
 		and (LTrim(sPanel_num1, "0") != LTrim(SubStr(sPanel_num2, 2), "0")) )
 	return ""
-			
-    StringUpper, sPanelType, sPanel_type
-    sPanelType := fTransliterate(sPanelType)
+
+    sPanelType := RegExMatch(sPanel_type, "iS)[А-Я]") ? fTransliterate(sPanel_type) : sPanel_type
     sPanelName := sPanelType "-" LTrim(sPanel_num1, "0") ; Removing leading zeroes.
 
     return sPanelName
@@ -173,12 +172,13 @@ fTransliterate(str) {
 				 ,"Й": "J", "К": "K", "Л": "L", "М": "M", "Н": "N", "О": "O", "П": "P", "Р": "R", "С": "S", "Т": "T"
 				 ,"У": "U", "Ф": "F", "Х": "H", "Ц": "C", "Ч": "Ch", "Ш": "Sh", "Щ": "Shch", "Ъ": "bitch you crazy"
 				 ,"Ы": "Y", "Ь": "waat", "Э": "E", "Ю": "Ju", "Я": "Ja"}
-    newStr := ""
+    newStr := "", char := ""
     Loop, parse, str
-        If RegExMatch(A_LoopField, "S)[А-Я]")
-            newStr .= dRusToEng[A_LoopField]
+        StringUpper, char, A_LoopField
+        If RegExMatch(char, "S)[А-Я]")
+            newStr .= dRusToEng[char]
         else
-            newStr .= A_LoopField
+            newStr .= char
     return newStr
 }
 
