@@ -11,7 +11,7 @@ AutoTrim Off
 ;@Ahk2Exe-SetMainIcon Things\Quantifyzor.ico
 ;@Ahk2Exe-SetCompanyName Konovalenko Systems
 ;@Ahk2Exe-SetCopyright Eli Konovalenko
-;@Ahk2Exe-SetVersion 1.0.1
+;@Ahk2Exe-SetVersion 1.0.2
 
 #Include fQuantifyUnitechnik.ahk
 #Include fQuantifyProgress.ahk
@@ -27,12 +27,19 @@ Global oOutputA := "", oOutputB := "", oLogger := new cLogger
 
 oLogger.del([ "OutputA", "OutputB", "SkippedA", "SkippedB", "Comparison" ])
 
-If (InStr(FileExist("InputA"), "D", true))
-    oOutputA := fQuantify(A_ScriptDir "\InputA", "A")    
+pInputDirA := "", pInputDirB := ""
+Loop, files, % A_ScriptDir "\*", D
+{
+    If RegExMatch(A_LoopFileName, "xS)^Input (?<letter> [AB]) \s", sInput_) {
+        fAbort( pInputDir%sInput_letter% , "Quantifyzor", "Две папки «Input" sInput_letter "».")
+        pInputDir%sInput_letter% := A_LoopFileLongPath
+    }
+}
 
-If (InStr(FileExist("InputB"), "D", true))
-    oOutputB := fQuantify(A_ScriptDir "\InputB", "B")    
+oOutputA := pInputDirA ? fQuantify(pInputDirA, "A") : ""
+oOutputB := pInputDirB ? fQuantify(pInputDirB, "B") : ""
 
+dPanelList := {}
 If (oOutputA or oOutputB) {
     dPanelList := fCompare(oOutputA, oOutputB)
 
