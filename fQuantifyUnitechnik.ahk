@@ -2,13 +2,12 @@
     oFile := FileOpen(pFile, "r-rwd", "CP1251")
     sUnitechnik := oFile.Read()
     oFile.Close()
-    fAbort(sUnitechnik == "", A_ThisFunc, "Ошибка при чтении файла."
-    , { "pFile": pFile, "sUnitechnik": sUnitechnik })
+    fAbort(sUnitechnik == "", A_ThisFunc, "Ошибка при чтении файла.", { "pFile": pFile, "sUnitechnik": sUnitechnik })
     
     dOutput := {dTotal: {n10: 0, n8: 0, n6: 0, n5: 0, n4: 0}
-              , dExtra: {n10: 0, n8: 0, n6: 0, n5: 0, n4: 0}
-              , dBent:  {n10: 0, n8: 0, n6: 0, n5: 0, n4: 0}
-              , dFlat:  {n10: 0, n8: 0, n6: 0, n5: 0, n4: 0}}
+                    , dExtra: {n10: 0, n8: 0, n6: 0, n5: 0, n4: 0}
+                    , dBent:  {n10: 0, n8: 0, n6: 0, n5: 0, n4: 0}
+                    , dFlat:   {n10: 0, n8: 0, n6: 0, n5: 0, n4: 0}}
 
     nPos := RegExMatch(sUnitechnik, "sSx)^"
     . "(?<top>   HEADER__\r?\n600\r?\n (?: [^E]++ | E (?!ND\r?\n  (RODSTOCK|BRGIRDER|REFORCEM) ) )++ END\r?\n)"

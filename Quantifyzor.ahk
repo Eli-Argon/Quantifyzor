@@ -11,7 +11,7 @@ AutoTrim Off
 ;@Ahk2Exe-SetMainIcon Things\Quantifyzor.ico
 ;@Ahk2Exe-SetCompanyName Konovalenko Systems
 ;@Ahk2Exe-SetCopyright Eli Konovalenko
-;@Ahk2Exe-SetVersion 1.0
+;@Ahk2Exe-SetVersion 1.0.1
 
 #Include fQuantifyUnitechnik.ahk
 #Include fQuantifyProgress.ahk
@@ -51,55 +51,52 @@ fQuantify(pInputDir, sLetter) {
     Local
     Global oLogger
 
-    nTotalFiles := 0, nPanelFiles := 0, nSkippedFiles := 0
-    dSumTotal := { n10: 0, n8: 0, n6: 0, n5: 0, n4: 0 }
+    nFilesTotal := 0, nPanelsTotal := 0, nFilesSkipped := 0, dSumTotal := { n10: 0, n8: 0, n6: 0, n5: 0, n4: 0 }
     oOutput := ComObjCreate("Scripting.Dictionary") ; Have to use this bullshit, cause AHK was "designed to be case-insensitive", you see.
 
     Loop, files, % pInputDir "\*", R
     {
-        ; dPanel :={sName: sPanelName, pLoco: A_LoopFileLongPath
+        ; dPanel :={sName: sPanel, pFile: A_LoopFileLongPath
         ;         , dTotal: {n10: "", n8: "", n6: "", n5: "", n4: ""}
         ;         , dExtra: {...}, dBent: {...}, dFlat: {...}}
-        nTotalFiles++
+        nFilesTotal++
 
-        sPanelName := fGetPanelName(A_LoopFileLongPath)
-        If !sPanelName {
-            nSkippedFiles++
+        sPanel := fGetPanelNameFilePath(A_LoopFileLongPath)
+        If !sPanel {
+            nFilesSkipped++
             oLogger.add("Skipped" sLetter, "UNKNOWN PANEL", A_LoopFileDir "\", A_LoopFileName)
             continue
         }
-        If (oOutput.Exists(sPanelName) == -1)
+        If (oOutput.Exists(sPanel) == -1)
             fAbort(true, A_ThisFunc, "Множественные версии однои̌ панели не принимаются."
-            , { "sPanelName": sPanelName, "A_LoopFileLongPath": A_LoopFileLongPath
-            , "oOutput.Item[""" sPanelName """].pLoco": oOutput.Item[sPanelName].pLoco } )
+            , { "sPanel": sPanel, "A_LoopFileLongPath": A_LoopFileLongPath, "oOutput.Item[""" sPanel """].pFile": oOutput.Item[sPanel].pFile } )
 
 
-        If (A_LoopFileExt == "pxml") {
+        If ( (A_LoopFileExt == "pxml") or (A_LoopFileExt == "PXML") ) {
             dPanel := fQuantifyProgress(A_LoopFileLongPath)
 		} else if (A_LoopFileExt == "") {
             dPanel := fQuantifyUnitechnik(A_LoopFileLongPath)
         } else {
-            nSkippedFiles++
+            nFilesSkipped++
 			oLogger.add("Skipped" sLetter, "WRONG EXTENSION", A_LoopFileDir "\", A_LoopFileName)
 			continue
         }
         nCheck := 0
         For _, nValue in dPanel.dTotal
             nCheck += nValue
-        fAbort(!nCheck, A_ThisFunc, "Отсутствуют данные о длине.", {"A_LoopFileLongPath": A_LoopFileLongPath})
+        fAbort(!nCheck, A_ThisFunc, "Общая длина проволоки равна нулю.", {"A_LoopFileLongPath": A_LoopFileLongPath})
 
         For key, value in dPanel.dTotal
             dSumTotal[key] += value
 
-        nPanelFiles++
-        dPanel.sName := sPanelName, dPanel.pLoco := A_LoopFileLongPath
-        oOutput.Add(sPanelName, dPanel)
-        oLogger.add("Output" sLetter, sPanelName
-        , dPanel.dTotal.n10, dPanel.dTotal.n8, dPanel.dTotal.n6, dPanel.dTotal.n5, dPanel.dTotal.n4)
+        nPanelsTotal++
+        dPanel.sName := sPanel, dPanel.pFile := A_LoopFileLongPath
+        oOutput.Add(sPanel, dPanel)
+        oLogger.add("Output" sLetter, sPanel, dPanel.dTotal.n10, dPanel.dTotal.n8, dPanel.dTotal.n6, dPanel.dTotal.n5, dPanel.dTotal.n4)
     }
 
-    fAbort(nTotalFiles != ( nPanelFiles + nSkippedFiles ), A_ThisFunc, "Что-то не сходится."
-	, { "nTotalFiles": nTotalFiles, "nPanelFiles": nPanelFiles, "nSkippedFiles": nSkippedFiles })
+    fAbort(nFilesTotal != ( nPanelsTotal + nFilesSkipped ), A_ThisFunc, "Что-то не сходится."
+	, { "nFilesTotal": nFilesTotal, "nPanelsTotal": nPanelsTotal, "nFilesSkipped": nFilesSkipped })
 
     oLogger.add("Output" sLetter, "#Sum:", dSumTotal.n10, dSumTotal.n8, dSumTotal.n6, dSumTotal.n5, dSumTotal.n4, "`n")
 
@@ -121,7 +118,7 @@ fCompare(oOutputA, oOutputB) {
 
     For sName, _ in dCombinedPanelList {
 
-        If (!oOutputB.Exists(sName))
+        If ( !oOutputB.Exists(sName) )
             n10B := 0, n8B := 0, n6B := 0, n5B := 0, n4B := 0
         else for key, value in oOutputB.Item[sName].dTotal
             %key%B := value
@@ -131,10 +128,10 @@ fCompare(oOutputA, oOutputB) {
         else for key, value in oOutputA.Item[sName].dTotal
             %key%A := value
 
-        For _, d in [10, 8, 6, 5, 4] {
-            c := n%d%B - n%d%A
-            dSumTotal[("n" d)] += c
-            nDelta%d% := (c < 0) ? c : ("+" c)
+        For _, d in [10, 8, 6, 5, 4] { ; Wire diameters.
+            c := n%d%B - n%d%A                 ; The difference between B and A.
+            nDelta%d% := (c < 0) ? c : ("+" c) ; If zero or above add «+».
+            dSumTotal[("n" d)] += c               ; Add the difference to the respective diameter's key in dSumTotal.
         }        
 
         oLogger.add("Comparison", sName, nDelta10, nDelta8, nDelta6, nDelta5, nDelta4)
@@ -147,41 +144,37 @@ fCompare(oOutputA, oOutputB) {
     return dCombinedPanelList
 }
 
-fGetPanelName(pFile) {
-    SplitPath, pFile, sFileName, pDir, sExt, sFileNameBare
-    
-    nPos := RegExMatch(sFileNameBare
-    , "isSx)^\d? (?<type> [A-ZА-Я]{1,6}) - (?<num1> \d+) (?<num2> -\d+)?", sPanel_)
-	fAbort(ErrorLevel, A_ThisFunc, "RegExMatch error.")
-    If !nPos
-        return ""
-    
-    If ( (sPanel_num2 != "")
-		and (LTrim(sPanel_num1, "0") != LTrim(SubStr(sPanel_num2, 2), "0")) )
-	return ""
 
-    sPanelType := RegExMatch(sPanel_type, "iS)[А-Я]") ? fTransliterate(sPanel_type) : sPanel_type
-    sPanelName := sPanelType "-" LTrim(sPanel_num1, "0") ; Removing leading zeroes.
 
-    return sPanelName
-}
 
-fTransliterate(str) {
+; Tries to get panel name from its file name, if fails returns empty string.
+fGetPanelNameFilePath(pFile) {
     Local
-    dRusToEng := {"А": "A", "Б": "B", "В": "V", "Г": "G", "Д": "D", "Е": "Je", "Ё": "Jo", "Ж": "Zh", "З": "Z", "И": "I"
-				 ,"Й": "J", "К": "K", "Л": "L", "М": "M", "Н": "N", "О": "O", "П": "P", "Р": "R", "С": "S", "Т": "T"
-				 ,"У": "U", "Ф": "F", "Х": "H", "Ц": "C", "Ч": "Ch", "Ш": "Sh", "Щ": "Shch", "Ъ": "bitch you crazy"
-				 ,"Ы": "Y", "Ь": "waat", "Э": "E", "Ю": "Ju", "Я": "Ja"}
-    newStr := "", char := ""
-    Loop, parse, str
-    {
-        StringUpper, char, A_LoopField
-        If RegExMatch(char, "S)[А-Я]")
-            newStr .= dRusToEng[char]
-        else
-            newStr .= char
-    }
-    return newStr
+
+    SplitPath, pFile, sFileName, pDir, sExt, sFileNameBare
+
+    ;!!!!!!!!!!!!!!!!!!!  vvv  LATIN => CYRILLIC   vvv  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!;
+    aLatinToCyrillic := [ ["ixS) (?<!\.) [a-zа-я]++.", "$U0"] ; Capitalizes everything except file extensions
+    , ["^V-", "В-"], ["^VK-", "ВК-"], ["^VC-", "ВЦ-"], ["^VT-", "ВТ-"], ["^NS-", "НС-"], ["^NT-", "НТ-"], ["^NC-", "НЦ-"]
+    , ["^P-", "П-"], ["^PV-", "ПВ-"], ["^PG-", "ПГ-"], ["^PK-", "ПК-"], ["^PL-", "ПЛ-"], ["^PT-", "ПТ-"], ["^PC-", "ПЦ-"]
+    , ["^SV-", "СВ-"], ["^SVSH-", "СВШ-"], ["^SSH-", "СШ-"], ["^PTKR-", "ПТКР-"], ["^KR-", "КР-"], ["^Z-", "Я-"] ]
+
+    For _, aPair in aLatinToCyrillic
+        sFileNameBare := RegExReplace( sFileNameBare, aPair[1], aPair[2] )
+    ;!!!!!!!!!!!!!!!!!!!  ^^^  LATIN => CYRILLIC    ^^^  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!;
+    
+    nPos := RegExMatch(sFileNameBare , "isSx)^\d? (?<type> [А-Я]{1,6} | В\(к\)) - (?<num1> \d+) (?<num2> -\d+)?", sPanel_)
+	fAbort(ErrorLevel, A_ThisFunc, "Regex error.")
+    If !nPos
+        return ""    
+    If ( (sPanel_num2 != "") and (LTrim(sPanel_num1, "0") != LTrim(SubStr(sPanel_num2, 2), "0")) )
+	    return ""
+    
+    sPanelType := (sPanel_type == "В(к)") ? "ВК" : sPanel_type
+    StringUpper, sPanelType, sPanelType
+    sPanel := sPanelType "-" LTrim(sPanel_num1, "0") ; Removing leading zeroes.
+
+    return sPanel
 }
 
 ; Calls ExitApp if the condition is true. Shows a message and given vars.
